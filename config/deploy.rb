@@ -1,4 +1,5 @@
 default_run_options[:pty] = true
+#default_run_options[:max_hosts] = 1 # XXX: work around ssh bug in capistrano with ruby 1.8.6 p368 and ruby 1.8.7
 
 set :application, "bugs"
 set :repository,  "git@github.com:taf2/redmine.git"
@@ -63,20 +64,20 @@ namespace :symlinks do
   desc "Make all the damn symlinks"
   task :make, :roles => :app, :except => { :no_release => true } do
     commands = normal_symlinks.map do |path|
-      "rm -rf #{release_path}/#{path} && \
-       ln -s #{shared_path}/#{path} #{release_path}/#{path}"
+      "rm -rf #{current_path}/#{path} && \
+       ln -s #{shared_path}/#{path} #{current_path}/#{path}"
     end
  
     commands += weird_symlinks.map do |from, to|
-      "rm -rf #{release_path}/#{to} && \
-       ln -s #{shared_path}/#{from} #{release_path}/#{to}"
+      "rm -rf #{current_path}/#{to} && \
+       ln -s #{shared_path}/#{from} #{current_path}/#{to}"
     end
  
     # needed for some of the symlinks
     run "mkdir -p #{current_path}/tmp"
  
     run <<-CMD
-      cd #{release_path} &&
+      cd #{current_path} &&
       #{commands.join(" && ")}
     CMD
   end
