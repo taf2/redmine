@@ -8,7 +8,7 @@ set :scm, :git
 # Or: `accurev`, `bzr`, `cvs`, `darcs`, `git`, `mercurial`, `perforce`, `subversion` or `none`
 
 ssh_options[:forward_agent] = true
-set :branch, "origin/master"
+set :branch, "master"
 set :deploy_via, :remote_cache
 set :deploy_to, "/var/www/apps/#{application}"
 
@@ -22,65 +22,55 @@ set :tmpdir_remote, "/var/www/apps/#{application}/tmp/"
 set :tmpdir_local, File.join(File.dirname(__FILE__),'..','tmp')
 set :use_sudo, false
 
-namespace :deploy do
-  desc "Deploy"
-  task :default do
-    update
-    restart
-    cleanup
+namespace :rails do
+  task :start, :roles => :web do
+    run "cd #{current_path} && /home/deployer/ruby/bin/ruby script/spin start"
+    run "#{sudo} /usr/bin/monit -g bugs -c /etc/monit.conf monitor all", :pty => true
   end
- 
-  desc "Setup a Git-style deployment."
-  task :setup, :except => { :no_release => true } do
-    run "git clone #{repository} #{current_path}"
-  end
- 
-  desc "Update the deployed code."
-  task :update_code, :except => { :no_release => true } do
-    run "cd #{current_path}; git fetch origin; git reset --hard #{branch}"
-  end
- 
-  namespace :rollback do
-    desc "Rollback a single commit."
-    task :code, :except => { :no_release => true } do
-      set :branch, "HEAD^"
-      deploy.default
-    end
 
-    task :default do
-      rollback.code
-    end
+  desc "restart the rails process"
+  task :reload, :roles => :app, :except => { :no_release => true } do
+    run "#{sudo} /usr/bin/monit -g bugs -c /etc/monit.conf unmonitor all", :pty => true
+    run "cd #{current_path} && /home/deployer/ruby/bin/ruby script/spin reload"
+    run "#{sudo} /usr/bin/monit -g bugs -c /etc/monit.conf monitor all", :pty => true
+  end
+
+  desc "full on restart, the site will be down"
+  task :restart, :roles => :app, :except => { :no_release => true } do
+    run "#{sudo} /usr/bin/monit -g bugs -c /etc/monit.conf unmonitor all", :pty => true
+    run "cd #{current_path} && /home/deployer/ruby/bin/ruby script/spin restart"
+    run "#{sudo} /usr/bin/monit -g bugs -c /etc/monit.conf monitor all", :pty => true
+  end
+
+  desc "stop the rails process"
+  task :stop, :roles => :web do
+    run "#{sudo} /usr/bin/monit -g bugs -c /etc/monit.conf unmonitor all", :pty => true
+    run "cd #{current_path} && /home/deployer/ruby/bin/ruby script/spin stop"
   end
 end
 
-set :normal_symlinks, %w(
-  config/database.yml
-  config/auth_sources.yml
-)
-set :weird_symlinks, {
-  'system'             => 'public/system'
-}
+namespace :deploy do
+  desc "restart all the processes"
+  task :restart, :roles => :app, :except => { :no_release => true } do
+    rails.reload
+  end
+
+  desc "start all processes"
+  task :start, :roles => :web do
+    rails.start
+  end
+
+  desc "stop all processes"
+  task :stop, :roles => :web do
+    rails.stop
+  end
+end
 
 namespace :symlinks do
   desc "Make all the damn symlinks"
-  task :make, :roles => :app, :except => { :no_release => true } do
-    commands = normal_symlinks.map do |path|
-      "rm -rf #{current_path}/#{path} && \
-       ln -s #{shared_path}/#{path} #{current_path}/#{path}"
-    end
- 
-    commands += weird_symlinks.map do |from, to|
-      "rm -rf #{current_path}/#{to} && \
-       ln -s #{shared_path}/#{from} #{current_path}/#{to}"
-    end
- 
-    # needed for some of the symlinks
-    run "mkdir -p #{current_path}/tmp"
- 
-    run <<-CMD
-      cd #{current_path} &&
-      #{commands.join(" && ")}
-    CMD
+  task :make, :except => { :no_release => true } do
+    run %{rm -f #{release_path}/config/database.yml && ln -s #{shared_path}/config/database.yml #{release_path}/config/database.yml} 
+    run %{rm -f #{release_path}/config/auth_sources.yml && ln -s #{shared_path}/config/auth_sources.yml #{release_path}/config/auth_sources.yml} 
   end
 end
 after "deploy:update_code", "symlinks:make"
