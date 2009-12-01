@@ -1,0 +1,3 @@
+#!/bin/sh
+
+unicorn_rails -c /var/www/apps/bugs/current/config/unicorn.rb -E production -D
