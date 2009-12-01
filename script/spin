@@ -1,3 +1,41 @@
-#!/bin/sh
+#!/usr/bin/env ruby
 
-unicorn_rails -c /var/www/apps/bugs/current/config/unicorn.rb -E production -D
+UNICORN_RAILS="/home/deployer/ruby/bin/unicorn_rails".freeze
+APP_PATH="/var/www/apps/bugs/current/".freeze
+
+class Runner
+  class << self
+
+    def start
+      system("#{UNICORN_RAILS -c #{APP_PATH}/config/unicorn.rb -E production -D}"
+    end
+
+    def reload
+      system("kill -s USR2 #{pid}")
+    end
+
+    def restart
+      stop
+      start
+    end
+
+    def stop
+      system("kill #{pid}")
+    end
+
+    def pid
+      File.read("#{APP_PATH}/tmp/pids/unicorn.pid")
+    end
+
+  end
+end
+
+case ARGV[0]
+when "start"
+when "reload"
+when "restart"
+when "stop"
+else
+  STDERR.puts "usage ./script/spin [start|stop|restart]"
+  exit(1)
+end
