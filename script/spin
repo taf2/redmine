@@ -32,9 +32,13 @@ end
 
 case ARGV[0]
 when "start"
+  Runner.start
 when "reload"
+  Runner.reload
 when "restart"
+  Runner.restart
 when "stop"
+  Runner.stop
 else
   STDERR.puts "usage ./script/spin [start|stop|restart]"
   exit(1)
