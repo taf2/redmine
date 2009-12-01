@@ -55,6 +55,7 @@ end
 
 set :normal_symlinks, %w(
   config/database.yml
+  config/auth_sources.yml
 )
 set :weird_symlinks, {
   'system'             => 'public/system'
