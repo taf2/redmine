@@ -7,11 +7,11 @@ class Runner
   class << self
 
     def start
-      system("#{UNICORN_RAILS -c #{APP_PATH}/config/unicorn.rb -E production -D}"
+      system "#{UNICORN_RAILS -c #{APP_PATH}/config/unicorn.rb -E production -D}"
     end
 
     def reload
-      system("kill -s USR2 #{pid}")
+      system "kill -s USR2 #{pid}"
     end
 
     def restart
@@ -20,11 +20,11 @@ class Runner
     end
 
     def stop
-      system("kill #{pid}")
+      system "kill #{pid}" 
     end
 
     def pid
-      File.read("#{APP_PATH}/tmp/pids/unicorn.pid")
+      File.read "#{APP_PATH}/tmp/pids/unicorn.pid"
     end
 
   end
